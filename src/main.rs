@@ -1,5 +1,7 @@
 mod internal;
 mod cli;
+mod modules;
+mod utils;
 
 use clap::Parser;
 use crate::cli::cli::{dispatch, Cli};

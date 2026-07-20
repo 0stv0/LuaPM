@@ -3,7 +3,7 @@ use crate::internal::environment::Environment;
 use crate::internal::project::Project;
 
 pub async fn run_project(target: Option<String>) -> anyhow::Result<()> {
-    let env = Environment::new();
+    let env = Environment::new()?;
     match target {
         Some(path) => {
             let path = PathBuf::from(path);

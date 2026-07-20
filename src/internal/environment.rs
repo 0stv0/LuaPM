@@ -1,14 +1,17 @@
 use mlua::Lua;
 use std::path::Path;
 use anyhow::Context;
+use crate::modules::module::register_all;
 
 pub struct Environment {
     lua: Lua
 }
 
 impl Environment {
-    pub fn new() -> Self {
-        Self { lua: Lua::new() }
+    pub fn new() -> anyhow::Result<Self> {
+        let lua = Lua::new();
+        register_all(&lua)?;
+        Ok(Self { lua })
     }
     pub async fn run_file(&self, path: &Path) -> anyhow::Result<()> {
         let source = tokio::fs::read_to_string(path)
