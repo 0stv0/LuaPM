@@ -9,7 +9,7 @@ pub trait Module {
     fn register(&self, lua: &Lua) -> Result<Table>;
 }
 
-pub fn register_all(lua: &Lua) -> anyhow::Result<()> {
+pub fn register_all(lua: &Lua) -> Result<()> {
     let modules: Vec<Box<dyn Module>> = vec![
         Box::new(IoModule),
         Box::new(FsModule),
