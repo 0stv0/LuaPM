@@ -1,6 +1,8 @@
 use mlua::{Lua, Table};
 use anyhow::Result;
-use crate::modules::io_module;
+use crate::modules::fs_module::FsModule;
+use crate::modules::io_module::IoModule;
+use crate::modules::json_module::JSONModule;
 
 pub trait Module {
     fn name(&self) -> &'static str;
@@ -9,7 +11,9 @@ pub trait Module {
 
 pub fn register_all(lua: &Lua) -> anyhow::Result<()> {
     let modules: Vec<Box<dyn Module>> = vec![
-        Box::new(io_module::IoModule)
+        Box::new(IoModule),
+        Box::new(FsModule),
+        Box::new(JSONModule)
     ];
     let globals = lua.globals();
     for module in modules {

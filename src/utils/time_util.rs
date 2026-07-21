@@ -1,4 +1,3 @@
-use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::Local;
 
 pub fn current_time() -> String {

@@ -9,6 +9,44 @@ pub struct Environment {
     lua: Lua
 }
 
+fn resolve_imports(path: &PathBuf, root: &PathBuf, contents: &HashMap<PathBuf, String>) -> anyhow::Result<String> {
+    let raw = contents
+        .get(path)
+        .ok_or_else(|| anyhow::anyhow!("file {} not found in the project.", path.display()))?;
+
+    let mut lines: Vec<String> = raw.lines().map(|l| l.to_string()).collect();
+    let mut imported_code      = String::new();
+    for i in 0..lines.len() {
+        let line = lines[i].clone();
+
+        if !line.starts_with("@import") {
+            continue;
+        }
+        let parts: Vec<&str> = line.split(" ").collect();
+        if parts.len() < 2 {
+            continue;
+        }
+
+        let mut req_name = parts[1].replace(";", "");
+        if req_name.is_empty() {
+            continue;
+        }
+
+        if !req_name.ends_with(".lua") {
+            req_name = format!("{}.lua", req_name);
+        }
+
+        let req_path = root.join(PathBuf::from(req_name));
+        lines[i]     = format!("-- {}", line);
+
+        let nested    = resolve_imports(&req_path, root, contents)?;
+        imported_code = format!("{}\n\n{}", imported_code, nested);
+    }
+
+    let combined = format!("{}\n\n{}", imported_code, lines.join("\n"));
+    Ok(combined)
+}
+
 impl Environment {
     pub fn new() -> anyhow::Result<Self> {
         let lua = Lua::new();
@@ -30,37 +68,10 @@ impl Environment {
     }
     pub async fn run_many(&self, root: &PathBuf, entry: &Option<PathBuf>, contents: &HashMap<PathBuf, String>) -> anyhow::Result<()> {
         let mut fixed: HashMap<PathBuf, String> = HashMap::new();
-        for (k, v) in contents {
-            // TODO: FIX NESTING IMPORTS
-            let mut lines: Vec<String> = v.lines().map(|l| l.to_string()).collect();
-            let mut code = String::new();
-            for i in 0..lines.len() {
-                let line = &lines[i];
-                if !line.starts_with("@import") {
-                    continue;
-                }
-                let mut parts: Vec<&str> = line.split(" ").collect();
-                if parts.len() < 2 {
-                    continue;
-                }
-                let mut requested = parts[1].to_string();
-                if requested.is_empty() {
-                    continue;
-                }
-                if !requested.contains(".lua") {
-                    requested = format!("{}.lua", requested).replace(";", "");
-                }
-                let req_path = root.join(&requested.replace(";", ""));
-                lines[i] = format!("-- {}", line);
-
-                let source = tokio::fs::read_to_string(&req_path)
-                    .await
-                    .with_context(|| format!("failed to read {}", req_path.display()))?;
-                code = format!("{}\n\n\n{}", code, source);
-            }
-
-            code = format!("{}\n\n\n{}", preload_code(&code), preload_code(&lines.join("\n")));
-            fixed.insert(k.to_owned(), code);
+        for path in contents.keys() {
+            let resolved  = resolve_imports(path, root, contents)?;
+            let processed = preload_code(&resolved);
+            fixed.insert(path.clone(), processed);
         }
 
         if let Some(entry_path) = entry {

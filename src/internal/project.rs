@@ -60,7 +60,6 @@ impl Project {
     }
     pub async fn load(root: &Path) -> anyhow::Result<Self> {
         let manifest = root.join("luapm.json");
-
         let raw = tokio::fs::read_to_string(&manifest)
             .await
             .map_err(|e| anyhow::anyhow!("failed to read {}: {}", manifest.display(), e))?;
